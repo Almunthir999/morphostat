@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24300302.svg)](https://doi.org/10.5281/zenodo.24300302)
+
 # MorphoStat
 
 **An end-to-end morphological post-processing pipeline for cell-imaging assays.**
@@ -248,7 +250,8 @@ BBBC021 analysis above. The synthetic fixtures are never presented as results.
 MorphoStat is actively maintained by the authors. Please report bugs, ask
 questions, or request features through
 [GitHub Issues](https://github.com/Almunthir999/morphostat/issues). Each release is
-archived on Zenodo; the version used in the Bio-protocol article is v0.1.1.
+archived on Zenodo; the version used in the Bio-protocol article is v0.1.1
+(https://doi.org/10.5281/zenodo.24300302; all versions: https://doi.org/10.5281/zenodo.24300301).
 The repository moved here from github.com/Almunthir334/morphostat; release v0.1.0
 remains archived at https://doi.org/10.5281/zenodo.20354069.
 
