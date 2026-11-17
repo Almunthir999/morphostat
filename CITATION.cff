@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use MorphoStat, please cite it as below."
+title: "MorphoStat: an automated pipeline for normalisation, assumption-aware statistics, and publication-ready visualisation of cell morphology profiles"
+type: software
+version: 0.1.1
+license: MIT
+repository-code: "https://github.com/Almunthir999/morphostat"
+authors:
+  - family-names: Altobi
+    given-names: Almunthir
+    affiliation: "College of Medicine and Health Sciences, National University of Science and Technology (NUST), Sohar, Oman"
+  - family-names: Heo
+    given-names: Danhui
+    affiliation: "Albert Szent-Györgyi Medical School, University of Szeged, Szeged, Hungary"
