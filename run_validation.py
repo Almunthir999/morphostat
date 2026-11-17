@@ -18,6 +18,10 @@ What it does
    (matched-plate medians, no normalisation, no statistics).
 5. Records the software versions and machine details used for the run.
 
+This script is the supported way to regenerate every figure, table and
+supplementary file of the article (Figure 7, direction_check.txt and
+environment.txt are produced only by this script).
+
 Usage (identical on Linux, macOS and Windows)
 ---------------------------------------------
     python run_validation.py
@@ -72,7 +76,7 @@ def get_extdata(extdata: str | None, workdir: str) -> str:
         if shutil.which("git") is None:
             sys.exit("git was not found. Download the cytominergallery zip (see the "
                      "header of this script) and re-run with --extdata.")
-        print(f"[1/5] Downloading BBBC021 profiles from {GALLERY_URL} ...")
+        print(f"[1/5] Downloading BBBC021 profiles (about 10 MB) from {GALLERY_URL} ...")
         subprocess.run(["git", "clone", "--depth", "1", GALLERY_URL, clone], check=True)
     return os.path.join(clone, "inst", "extdata")
 
@@ -174,10 +178,12 @@ def main() -> None:
     print(f"Multi-group: {rm['manifest']['n_samples']} wells; omnibus significant: "
           f"{int(om['significant'].sum())} of {len(om)}; tests used: {om['test'].value_counts().to_dict()}")
     print(check)
-    print("Figure 1 = two_group/figures/violin_panel.*")
-    print("Figure 2 = two_group/figures/volcano_Actin_disruptors.*")
-    print("Figure 3 = multi_group/figures/pca.*")
-    print("Figure 4 = multi_group/figures/shape_correlation_spearman.*")
+    print("Article Figure 4 = two_group/figures/violin_panel.*")
+    print("Article Figure 5 = two_group/figures/volcano_Actin_disruptors.*")
+    print("Article Figure 6 = multi_group/figures/pca.*")
+    print("Article Figure 7 = multi_group/figures/shape_correlation_spearman.*")
+    print("Article Table 5 and File S2 = two_group/tables/pairwise_vs_control.csv")
+    print("Article File S3 = multi_group/tables/omnibus_across_groups.csv")
     print(f"All outputs written to: {os.path.abspath(a.outdir)}")
 
 

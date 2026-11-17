@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.2 (2026-11)
+Usability release prompted by an independent test of the Bio-protocol instructions.
+Statistical results are identical to v0.1.1.
+- `morphostat run --help` now describes every option and shows its default.
+- Clear error messages (no Python traceback) when the control label, group, batch or
+  metadata column is not found; the message lists the labels/columns that exist.
+- REPORT.md now lists the metadata columns, every column excluded automatically, and
+  all analysed features; the violin-panel heading says whether features were chosen
+  with `--panel`; PNG files are listed.
+- `cleaning_report.txt` lists the automatically excluded (non-feature) columns.
+- `run_manifest.json` records every setting plus the MorphoStat and Python versions.
+- `normalized_features.csv` keeps the `__source_file` column (origin of each row).
+- `run_validation.py` prints which article figure/table each output corresponds to.
+
 ## v0.1.1 (2026-11)
 - Added `run_validation.py`: one-command reproduction of the BBBC021 validation
   reported in the Bio-protocol article (figures, tables, direction check, environment record).

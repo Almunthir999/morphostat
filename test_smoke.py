@@ -306,3 +306,27 @@ def test_fiji_results_non_features_excluded(tmp_path):
                        "treatment": ["DMSO", "DMSO"]})
     feats = mio.detect_feature_columns(df, meta_cols=["treatment"])
     assert feats == ["Area", "Perim.", "Circ.", "AR", "Round", "Solidity"]
+
+
+def test_cli_reports_wrong_control_label_clearly(toy_csv_folder, tmp_path, capsys):
+    """A misspelled control label gives a short error listing the labels found, not a traceback."""
+    from morphostat.cli import main
+    rc = main(["run", "--input", str(toy_csv_folder), "--group-col", "group",
+               "--control", "no_such_label", "--outdir", str(tmp_path / "out")])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "no_such_label" in err and "values found" in err
+
+
+def test_report_lists_columns_and_manifest_records_settings(toy_csv_folder, tmp_path):
+    import json
+    from morphostat import run_pipeline
+    out = tmp_path / "res"
+    run_pipeline(str(toy_csv_folder), str(out), group_col="group", control="ctrl",
+                 batch_col="batch", impute="median", nan_frac_thresh=0.4)
+    rep = (out / "REPORT.md").read_text()
+    assert "## Columns" in rep and "## Features analysed" in rep
+    man = json.loads((out / "run_manifest.json").read_text())
+    for key in ("impute", "nan_frac_thresh", "meta_cols", "pattern", "morphostat_version"):
+        assert key in man
+    assert man["nan_frac_thresh"] == 0.4

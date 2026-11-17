@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24300302.svg)](https://doi.org/10.5281/zenodo.24300302)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24300301.svg)](https://doi.org/10.5281/zenodo.24300301)
 
 # MorphoStat
 
@@ -190,10 +190,10 @@ python run_validation.py              # writes ./validation_results/
 | `direction_check.txt` | raw-data direction check |
 | `environment.txt` | software versions used |
 
-Expected summary: two-group 345 wells x 459 features, 379 significant (FDR < 0.05,
+Expected summary (first lines of the final summary): two-group 345 wells x 459 features, 379 significant (FDR < 0.05,
 Mann-Whitney U for all features); multi-group 450 wells, 458 of 459 significant
 (Kruskal-Wallis); treated median cell area lower than DMSO on 9/9 plates.
-Runtime is under one minute on a laptop.
+Runtime is under one minute on a laptop; the download is about 10 MB.
 
 Without git, download
 https://github.com/cytomining/cytominergallery/archive/refs/heads/master.zip,
@@ -250,8 +250,8 @@ BBBC021 analysis above. The synthetic fixtures are never presented as results.
 MorphoStat is actively maintained by the authors. Please report bugs, ask
 questions, or request features through
 [GitHub Issues](https://github.com/Almunthir999/morphostat/issues). Each release is
-archived on Zenodo; the version used in the Bio-protocol article is v0.1.1
-(https://doi.org/10.5281/zenodo.24300302; all versions: https://doi.org/10.5281/zenodo.24300301).
+archived on Zenodo; the version used in the Bio-protocol article is v0.1.2
+(all versions, always resolving to the latest: https://doi.org/10.5281/zenodo.24300301).
 The repository moved here from github.com/Almunthir334/morphostat; release v0.1.0
 remains archived at https://doi.org/10.5281/zenodo.20354069.
 

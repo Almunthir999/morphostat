@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 from dataclasses import asdict
 from datetime import datetime
 from typing import Sequence
@@ -70,9 +71,28 @@ def run_pipeline(
         else:
             raw = agg
 
+    for col, opt in ((group_col, "--group-col"), (batch_col, "--batch-col"),
+                     (fs_sample_col, "--fs-sample-col")):
+        if col and col not in raw.columns:
+            raise ValueError(f"column {col!r} given with {opt} was not found in the input files. "
+                             f"Column names are case-sensitive; the files contain e.g.: "
+                             f"{', '.join(map(repr, list(raw.columns)[:12]))}")
+    missing_meta = [c for c in meta_cols if c not in raw.columns]
+    if missing_meta:
+        raise ValueError(f"column(s) given with --meta-cols not found in the input files: "
+                         f"{', '.join(map(repr, missing_meta))}")
+    labels = sorted(set(raw[group_col].dropna().astype(str)))
+    if str(control) not in labels:
+        raise ValueError(f"control group {control!r} not found in column {group_col!r}. "
+                         f"Labels are case-sensitive; values found: {', '.join(map(repr, labels))}")
+
     all_meta = [c for c in ([group_col, batch_col, *meta_cols, fs_sample_col]) if c]
     feature_cols = mio.detect_feature_columns(raw, meta_cols=all_meta,
                                               explicit_features=explicit_features)
+    # numeric columns that were set aside automatically (positions, IDs, ...) - reported for audit
+    auto_excluded = [c for c in raw.columns
+                     if c not in feature_cols and c not in all_meta and c != "__source_file"
+                     and pd.api.types.is_numeric_dtype(raw[c])]
     if not feature_cols:
         raise ValueError("No numeric morphology features detected. "
                          "Pass explicit_features or check meta_cols.")
@@ -80,6 +100,7 @@ def run_pipeline(
     # 2. CLEAN ------------------------------------------------------------
     clean_df, feature_cols, report = mio.clean(
         raw, feature_cols, nan_frac_thresh=nan_frac_thresh, impute=impute)
+    report.dropped_non_feature = auto_excluded
     with open(os.path.join(tbl_dir, "cleaning_report.txt"), "w") as fh:
         fh.write(report.as_text())
 
@@ -93,7 +114,8 @@ def run_pipeline(
     # 3. NORMALIZE --------------------------------------------------------
     norm_df = mio.normalize(clean_df, feature_cols, method=normalization,
                             batch_col=batch_col, group_col=group_col, control=control)
-    keep_cols = [c for c in [group_col, batch_col, fs_sample_col, *meta_cols] if c and c in norm_df.columns]
+    keep_cols = [c for c in [group_col, batch_col, fs_sample_col, *meta_cols, "__source_file"]
+                 if c and c in norm_df.columns]
     norm_df[list(dict.fromkeys(keep_cols + list(feature_cols)))].to_csv(
         os.path.join(tbl_dir, "normalized_features.csv"), index=False)
 
@@ -105,6 +127,7 @@ def run_pipeline(
 
     # 5. VISUALIZE --------------------------------------------------------
     order = [control] + [g for g in norm_df[group_col].unique() if g != control]
+    panel_user = panel_features is not None
     if panel_features is None:
         panel_features = _auto_feature_panel(pairwise, feature_cols, k=6)
 
@@ -129,7 +152,8 @@ def run_pipeline(
     # 6. REPORT + MANIFEST ------------------------------------------------
     report_md = _build_report(input_path, source, group_col, control, batch_col,
                               feature_cols, norm_df, pairwise, omni, report, alpha,
-                              panel_features)
+                              panel_features, panel_user=panel_user,
+                              meta_cols=[c for c in all_meta if c])
     with open(os.path.join(outdir, "REPORT.md"), "w") as fh:
         fh.write(report_md)
 
@@ -137,6 +161,10 @@ def run_pipeline(
         timestamp=t0.isoformat(), input=input_path, source=source,
         group_col=group_col, control=control, batch_col=batch_col,
         normalization=normalization, alpha=alpha,
+        meta_cols=list(meta_cols), features=list(explicit_features) if explicit_features else None,
+        panel=list(panel_features), impute=impute, nan_frac_thresh=nan_frac_thresh,
+        fs_sample_col=fs_sample_col, pattern=pattern, recursive=recursive,
+        morphostat_version=_version(), python_version=platform.python_version(),
         n_samples=int(len(norm_df)), n_features=int(len(feature_cols)),
         groups={k: int(v) for k, v in norm_df[group_col].value_counts().items()},
         n_significant_pairwise=int(pairwise["significant"].sum()) if "significant" in pairwise else 0,
@@ -151,8 +179,14 @@ def run_pipeline(
                 cleaning_report=report, figures=figures)
 
 
+def _version() -> str:
+    from . import __version__
+    return __version__
+
+
 def _build_report(input_path, source, group_col, control, batch_col, feature_cols,
-                  norm_df, pairwise, omni, clean_report, alpha, panel) -> str:
+                  norm_df, pairwise, omni, clean_report, alpha, panel,
+                  panel_user=False, meta_cols=()) -> str:
     n_sig = int(pairwise["significant"].sum()) if "significant" in pairwise else 0
     lines = []
     lines.append("# MorphoStat analysis report\n")
@@ -186,7 +220,8 @@ def _build_report(input_path, source, group_col, control, batch_col, feature_col
                 lines.append(f"| {g} | {int(n)} | - | - |")
     lines.append("")
 
-    lines.append("## Highlighted feature panel (auto-selected by largest mean effect)")
+    lines.append("## Highlighted feature panel (" + ("user-specified with --panel" if panel_user
+                 else "auto-selected by largest mean effect") + ")")
     for f in panel:
         lines.append(f"- {f}")
     lines.append("")
@@ -197,11 +232,19 @@ def _build_report(input_path, source, group_col, control, batch_col, feature_col
             lines.append(f"- {t}: {n} comparisons")
     lines.append("")
 
+    lines.append("## Columns")
+    lines.append("- **Metadata (not analysed):** " + ", ".join(f"`{c}`" for c in meta_cols))
+    excl = clean_report.dropped_non_feature
+    lines.append(f"- **Excluded automatically (positions, IDs, counts) [{len(excl)}]:** "
+                 + (", ".join(f"`{c}`" for c in excl) if excl else "none"))
+    lines.append(f"- **Features analysed [{len(feature_cols)}]:** see the list at the end of this report")
+    lines.append("")
+
     lines.append("## Files")
-    lines.append("- `figures/violin_panel.svg|pdf` - feature distributions by group")
-    lines.append("- `figures/pca.svg|pdf` - morphological signature clustering")
-    lines.append("- `figures/correlation_heatmap.svg|pdf` - feature correlation structure")
-    lines.append("- `figures/volcano_*.svg|pdf` - effect size vs FDR for strongest responder")
+    lines.append("- `figures/violin_panel.svg|pdf|png` - feature distributions by group")
+    lines.append("- `figures/pca.svg|pdf|png` - morphological signature clustering")
+    lines.append("- `figures/correlation_heatmap.svg|pdf|png` - feature correlation structure")
+    lines.append("- `figures/volcano_*.svg|pdf|png` - effect size vs FDR for strongest responder")
     lines.append("- `tables/pairwise_vs_control.csv` - full per-feature statistics")
     lines.append("- `tables/omnibus_across_groups.csv` - ANOVA/Kruskal across all groups")
     lines.append("- `tables/normalized_features.csv` - cleaned, normalized matrix")
@@ -210,4 +253,7 @@ def _build_report(input_path, source, group_col, control, batch_col, feature_col
     lines.append("```")
     lines.append(clean_report.as_text())
     lines.append("```")
+    lines.append("")
+    lines.append(f"## Features analysed ({len(feature_cols)})")
+    lines.append(", ".join(f"`{c}`" for c in feature_cols))
     return "\n".join(lines)

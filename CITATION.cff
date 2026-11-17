@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use MorphoStat, please cite it as below."
 title: "MorphoStat: an automated pipeline for normalisation, assumption-aware statistics, and publication-ready visualisation of cell morphology profiles"
 type: software
-version: 0.1.1
+version: 0.1.2
 license: MIT
 repository-code: "https://github.com/Almunthir999/morphostat"
 authors:
