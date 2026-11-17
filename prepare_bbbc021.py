@@ -1,6 +1,6 @@
 """
-examples/prepare_bbbc021.py
-===========================
+prepare_bbbc021.py
+==================
 Assemble a REAL demo dataset for MorphoStat from the BBBC021 MCF-7 screen
 (Ljosa et al. 2013, J Biomol Screen), as bundled by the Broad Institute
 `cytominergallery` R package.
@@ -11,10 +11,10 @@ compendium of mechanistically distinct compounds, stained for DNA / Actin
 then averaged per well. We join the per-well feature table to the image
 metadata (compound, concentration) and the mechanism-of-action key, then write
 ONE CSV PER PLATE into a folder so the pipeline's multi-file ingestion is
-exercised exactly as it would be on real per-replicate FilamentSensor exports.
+exercised exactly as it would be on real per-plate or per-replicate exports.
 
 Usage:
-    python examples/prepare_bbbc021.py <path_to_cytominergallery/inst/extdata> <out_folder>
+    python prepare_bbbc021.py <path_to_cytominergallery/inst/extdata> <out_folder>
 """
 import os
 import sys
