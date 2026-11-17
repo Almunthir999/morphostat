@@ -132,9 +132,11 @@ def run_pipeline(
         panel_features = _auto_feature_panel(pairwise, feature_cols, k=6)
 
     figures = {}
+    ylab = {"robust_z_to_control": "Robust z-score (vs control)",
+            "standard": "z-score", "none": "Value"}.get(normalization, "Value")
     figures["violin_panel"] = mviz.violin_panel(
         norm_df, panel_features, group_col, fig_dir, control=control, order=order,
-        title="Morphological features by treatment group (robust z to control)")
+        title="Morphological features by group", stats=pairwise, ylabel=ylab)
     figures["pca"], _ = mviz.pca_plot(
         norm_df, feature_cols, group_col, fig_dir, control=control, order=order,
         title="Morphological signature (PCA of all features)")
@@ -147,7 +149,8 @@ def run_pipeline(
                      .assign(a=lambda d: d["effect"].abs())
                      .groupby("group")["a"].mean().sort_values(ascending=False))
         target = strongest.index[0] if len(strongest) else treat_groups[0]
-        figures["volcano"] = mviz.effect_volcano(pairwise, target, fig_dir, alpha=alpha)
+        figures["volcano"] = mviz.effect_volcano(pairwise, target, fig_dir, alpha=alpha,
+                                                   control=control)
 
     # 6. REPORT + MANIFEST ------------------------------------------------
     report_md = _build_report(input_path, source, group_col, control, batch_col,

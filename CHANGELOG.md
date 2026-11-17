@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.3 (2026-11)
+Figure readability release; statistical results are identical to v0.1.1/v0.1.2.
+- Readable feature names in all figures (e.g. `Cells_AreaShape_FormFactor` ->
+  "Circularity (form factor)", `Nuclei_Intensity_StdIntensity_CorrTub` ->
+  "Nuc_Intensity_Std [Tub]"); full names remain in all output tables.
+- Larger fonts and bold titles; legend inside the PCA plot.
+- Volcano plot: labels for the strongest features outside the plot with leader lines
+  (higher in treatment on the right, lower on the left), effect-size name in the axis label.
+- Violin panel: the adjusted p-value of each comparison is printed in the panel
+  (two-group runs); y-axis label follows the normalisation used.
+
 ## v0.1.2 (2026-11)
 Usability release prompted by an independent test of the Bio-protocol instructions.
 Statistical results are identical to v0.1.1.

@@ -33,10 +33,50 @@ def set_style():
         "pdf.fonttype": 42,              # TrueType, editable in PDF
         "font.family": "sans-serif",
         "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica"],
-        "font.size": 9, "axes.titlesize": 10, "axes.labelsize": 9,
+        "font.size": 10, "axes.titlesize": 12, "axes.titleweight": "bold",
+        "axes.labelsize": 11, "xtick.labelsize": 9.5, "ytick.labelsize": 9.5,
+        "legend.fontsize": 9.5, "legend.title_fontsize": 10,
         "axes.spines.top": False, "axes.spines.right": False,
+        "axes.linewidth": 0.9,
         "figure.dpi": 150, "savefig.dpi": 300, "savefig.bbox": "tight",
     })
+
+
+# ---------------------------------------------------------------------------
+# Readable feature names (full names are always kept in the output tables)
+_SHAPE_NAMES = {
+    "Area": "Area", "Perimeter": "Perimeter", "FormFactor": "Circularity (form factor)",
+    "Solidity": "Solidity", "Compactness": "Compactness", "Eccentricity": "Eccentricity",
+    "MajorAxisLength": "Major-axis length", "MinorAxisLength": "Minor-axis length",
+    "Orientation": "Orientation angle", "Extent": "Extent",
+    "MaxFeretDiameter": "Max Feret diameter", "MinFeretDiameter": "Min Feret diameter",
+    "MaximumRadius": "Maximum radius", "MeanRadius": "Mean radius", "MedianRadius": "Median radius",
+}
+_COMPARTMENTS = {"Cells": "Cell", "Nuclei": "Nuc", "Cytoplasm": "Cyto"}
+
+
+def pretty_name(feature: str, max_len: int = 42) -> str:
+    """Shorten CellProfiler-style names for plotting, e.g.
+    Cells_AreaShape_FormFactor -> 'Circularity (form factor)',
+    Nuclei_Intensity_StdIntensity_CorrTub -> 'Nuc_Intensity_StdIntensity [Tub]'.
+    Names that do not follow the CellProfiler pattern are returned unchanged."""
+    f = str(feature)
+    parts = f.split("_")
+    if len(parts) >= 3 and parts[0] in _COMPARTMENTS and parts[1] == "AreaShape" and len(parts) == 3:
+        nice = _SHAPE_NAMES.get(parts[2])
+        if nice:
+            return nice if parts[0] == "Cells" else f"{_COMPARTMENTS[parts[0]]} {nice.lower()}"
+    if parts and parts[0] in _COMPARTMENTS:
+        parts[0] = _COMPARTMENTS[parts[0]]
+        if len(parts) >= 3 and parts[1] == "Intensity":
+            parts[2] = parts[2].replace("Intensity", "") or parts[2]
+        ci = next((i for i, t in enumerate(parts) if t.startswith("Corr") and len(t) > 4 and i > 1), None)
+        if ci is not None:
+            chan = parts.pop(ci)[4:]
+            f = "_".join(parts) + f" [{chan}]"
+        else:
+            f = "_".join(parts)
+    return f if len(f) <= max_len else f[: max_len - 1] + "\u2026"
 
 
 def _save(fig, outdir: str, name: str) -> dict[str, str]:
@@ -63,8 +103,11 @@ def violin_panel(
     df: pd.DataFrame, features: Sequence[str], group_col: str,
     outdir: str, name: str = "violin_panel", control: str | None = None,
     order: Sequence[str] | None = None, ncols: int = 3, title: str | None = None,
+    stats: pd.DataFrame | None = None, ylabel: str = "Robust z-score (vs control)",
 ) -> dict[str, str]:
-    """Grid of violin + box + jittered points for selected features by group."""
+    """Grid of violin + box + jittered points for selected features by group.
+    If ``stats`` (the pairwise table) is given, the adjusted p-value of each
+    treatment-vs-control comparison is printed in the panel."""
     set_style()
     features = [f for f in features if f in df.columns]
     n = len(features); ncols = min(ncols, n); nrows = int(np.ceil(n / ncols))
@@ -73,31 +116,47 @@ def violin_panel(
         if control in order:
             order = [control] + [g for g in order if g != control]
     pal = _palette(order, control)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(3.4 * ncols, 2.9 * nrows), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(3.3 * ncols, 3.1 * nrows), squeeze=False)
     for i, feat in enumerate(features):
         ax = axes[i // ncols][i % ncols]
         sns.violinplot(data=df, x=group_col, y=feat, order=order, hue=group_col,
-                       palette=pal, inner=None, cut=0, linewidth=0.8, legend=False, ax=ax)
+                       palette=pal, inner=None, cut=0, linewidth=0.9, legend=False, ax=ax)
         for coll in ax.collections:
-            coll.set_alpha(0.55)
-        sns.boxplot(data=df, x=group_col, y=feat, order=order, width=0.18,
+            coll.set_alpha(0.6)
+        sns.boxplot(data=df, x=group_col, y=feat, order=order, width=0.16,
                     showcaps=True, boxprops={"facecolor": "white", "zorder": 3},
-                    whiskerprops={"linewidth": 0.8}, fliersize=0, linewidth=0.8, ax=ax)
+                    whiskerprops={"linewidth": 0.9}, fliersize=0, linewidth=0.9, ax=ax)
         sns.stripplot(data=df, x=group_col, y=feat, order=order, color="black",
-                      size=1.6, alpha=0.35, jitter=0.18, ax=ax)
+                      size=1.8, alpha=0.35, jitter=0.18, ax=ax)
+        ax.set_title(pretty_name(feat, 34), fontsize=10.5, fontweight="bold")
         ax.set_xlabel("")
-        ax.set_ylabel(feat, fontsize=8)
-        ax.tick_params(axis="x", rotation=35, labelsize=7)
-        for lbl in ax.get_xticklabels():
-            lbl.set_ha("right")
+        ax.set_ylabel(ylabel if i % ncols == 0 else "", fontsize=9.5)
+        rot = 0 if len(order) <= 2 else 30
+        ax.tick_params(axis="x", rotation=rot, labelsize=9)
+        if rot:
+            for lbl in ax.get_xticklabels():
+                lbl.set_ha("right")
+        if stats is not None and len(order) == 2:
+            row = stats[(stats["feature"] == feat) & (stats["group"] == order[1])]
+            if len(row) and pd.notna(row["fdr_bh"].iloc[0]):
+                q = float(row["fdr_bh"].iloc[0])
+                ax.text(0.98, 0.97, "adj. p = " + _fmt_p(q), transform=ax.transAxes,
+                        ha="right", va="top", fontsize=8.5, color="#333333")
     for j in range(n, nrows * ncols):
         axes[j // ncols][j % ncols].axis("off")
     if title:
-        fig.suptitle(title, y=1.005, fontsize=11)
+        fig.suptitle(title, y=1.01, fontsize=12.5, fontweight="bold")
     fig.tight_layout()
     paths = _save(fig, outdir, name)
     plt.close(fig)
     return paths
+
+
+def _fmt_p(q: float) -> str:
+    if q >= 0.001:
+        return f"{q:.3f}"
+    m, e = f"{q:.1e}".split("e")
+    return f"{m}\u00d710$^{{{int(e)}}}$"
 
 
 # ---------------------------------------------------------------------------
@@ -123,20 +182,20 @@ def pca_plot(
             order = [control] + [g for g in order if g != control]
     pal = _palette(order, control)
 
-    fig, ax = plt.subplots(figsize=(6.2, 5.2))
+    fig, ax = plt.subplots(figsize=(6.4, 5.6))
+    ax.axhline(0, color="#dddddd", lw=0.8, zorder=0); ax.axvline(0, color="#dddddd", lw=0.8, zorder=0)
     for g in order:
         sub = scores[scores[group_col] == g]
-        ax.scatter(sub["PC1"], sub["PC2"], s=22, alpha=0.8, label=str(g),
-                   color=pal[g], edgecolor="white", linewidth=0.3)
+        ax.scatter(sub["PC1"], sub["PC2"], s=34, alpha=0.85, label=str(g),
+                   color=pal[g], edgecolor="white", linewidth=0.5, zorder=3)
         if draw_ellipses and len(sub) >= 3:
             _confidence_ellipse(sub["PC1"].to_numpy(), sub["PC2"].to_numpy(), ax,
                                 n_std=2.0, edgecolor=pal[g], facecolor="none",
-                                linewidth=1.0, alpha=0.7)
+                                linewidth=0.9, alpha=0.55, zorder=2)
     ax.set_xlabel(f"PC1 ({ev[0]:.1f}% variance)")
     ax.set_ylabel(f"PC2 ({ev[1]:.1f}% variance)")
-    ax.axhline(0, color="grey", lw=0.5, ls=":"); ax.axvline(0, color="grey", lw=0.5, ls=":")
-    ax.legend(title=group_col, fontsize=7, title_fontsize=8, frameon=False,
-              bbox_to_anchor=(1.02, 1), loc="upper left")
+    ax.legend(title=group_col, frameon=False, loc="best", markerscale=1.1,
+              handletextpad=0.3, borderaxespad=0.4)
     if title:
         ax.set_title(title)
     fig.tight_layout()
@@ -166,7 +225,7 @@ def correlation_heatmap(
     name: str = "correlation_heatmap", method: str = "pearson",
     cluster: bool = True, max_features: int = 40, title: str | None = None,
 ) -> dict[str, str]:
-    """Clustered feature-feature correlation heatmap."""
+    """Clustered feature-feature correlation heatmap with readable feature names."""
     set_style()
     feats = list(feature_cols)
     if len(feats) > max_features:  # keep the most variable features for readability
@@ -180,13 +239,22 @@ def correlation_heatmap(
         Z = linkage(squareform(d, checks=False), method="average")
         idx = leaves_list(Z)
         corr = corr.iloc[idx, idx]
-    sz = max(6, 0.22 * len(feats))
-    fig, ax = plt.subplots(figsize=(sz, sz * 0.92))
-    sns.heatmap(corr, cmap="vlag", center=0, vmin=-1, vmax=1, square=True,
-                cbar_kws={"shrink": 0.5, "label": f"{method} r"},
+    labels = [pretty_name(f, 40) for f in corr.columns]
+    corr.index, corr.columns = labels, labels
+    n = len(feats)
+    small = n <= 15
+    side = 5.6 if small else max(7.0, 0.24 * n)
+    fig, ax = plt.subplots(figsize=(side + 1.6, side))
+    sns.heatmap(corr, cmap="RdBu_r", center=0, vmin=-1, vmax=1, square=True,
+                linewidths=0.4 if small else 0, linecolor="white",
+                cbar_kws={"shrink": 0.7, "label": f"{method.capitalize()} correlation"},
                 xticklabels=True, yticklabels=True, ax=ax)
-    ax.tick_params(labelsize=5)
-    ax.set_title(title or f"Cytoskeletal feature correlation ({method})")
+    ax.tick_params(labelsize=9.5 if small else 6.5, length=2)
+    plt.setp(ax.get_xticklabels(), rotation=90)
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=9)
+    cbar.set_label(f"{method.capitalize()} correlation", fontsize=10.5)
+    ax.set_title(title or f"Feature correlation structure ({method.capitalize()})", pad=10)
     fig.tight_layout()
     paths = _save(fig, outdir, name)
     plt.close(fig)
@@ -197,46 +265,57 @@ def correlation_heatmap(
 def effect_volcano(
     pairwise: pd.DataFrame, group: str, outdir: str,
     name: str | None = None, alpha: float = 0.05, top_n_labels: int = 12,
+    control: str | None = None,
 ) -> dict[str, str]:
-    """Volcano-style summary: effect size vs -log10(FDR) for one treatment group."""
+    """Volcano-style summary: effect size vs -log10(adjusted p) for one treatment group.
+    The strongest significant features are labelled outside the plot (higher in
+    treatment on the right, lower on the left) with leader lines."""
     set_style()
     sub = pairwise[pairwise["group"] == group].copy()
     sub = sub.dropna(subset=["effect", "fdr_bh"])
     sub["nlog10fdr"] = -np.log10(sub["fdr_bh"].clip(lower=1e-300))
-    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    UP, DOWN, NS = "#C8394B", "#3C64C0", "#C9CBD3"
+    fig = plt.figure(figsize=(9.8, 5.4))
+    ax = fig.add_axes([0.32, 0.17, 0.36, 0.72])
     sig = sub["fdr_bh"] < alpha
-    ax.scatter(sub.loc[~sig, "effect"], sub.loc[~sig, "nlog10fdr"], s=14,
-               color="lightgrey", alpha=0.7, label="ns")
-    ax.scatter(sub.loc[sig & (sub["effect"] > 0), "effect"], sub.loc[sig & (sub["effect"] > 0), "nlog10fdr"],
-               s=18, color="#c0392b", alpha=0.8, label=f"up (FDR<{alpha})")
-    ax.scatter(sub.loc[sig & (sub["effect"] < 0), "effect"], sub.loc[sig & (sub["effect"] < 0), "nlog10fdr"],
-               s=18, color="#2471a3", alpha=0.8, label=f"down (FDR<{alpha})")
-    ax.axhline(-np.log10(alpha), color="grey", ls="--", lw=0.7)
-    ax.axvline(0, color="grey", ls=":", lw=0.6)
+    up = sig & (sub["effect"] > 0); dn = sig & (sub["effect"] < 0)
+    ax.scatter(sub.loc[~sig, "effect"], sub.loc[~sig, "nlog10fdr"], s=26, color=NS,
+               edgecolor="white", linewidth=0.3, label="not significant", zorder=2)
+    ax.scatter(sub.loc[up, "effect"], sub.loc[up, "nlog10fdr"], s=30, color=UP,
+               edgecolor="white", linewidth=0.3, label="higher in treatment", zorder=3)
+    ax.scatter(sub.loc[dn, "effect"], sub.loc[dn, "nlog10fdr"], s=30, color=DOWN,
+               edgecolor="white", linewidth=0.3, label="lower in treatment", zorder=3)
+    ax.axhline(-np.log10(alpha), color="#777777", ls="--", lw=0.9, zorder=1)
+    ax.axvline(0, color="#dddddd", lw=0.9, zorder=0)
     et = sub["effect_type"].dropna().iloc[0] if sub["effect_type"].notna().any() else "effect"
-    ax.set_xlabel(f"effect size ({et}),  {group} vs control")
-    ax.set_ylabel("-log10(FDR)")
-    ax.set_title(f"Morphological response: {group}")
+    et_nice = {"cliffs_delta": "Cliff's \u03b4", "hedges_g": "Hedges' g"}.get(et, et)
+    ref = control if control else "control"
+    ax.set_xlabel(f"Effect size ({et_nice}): {group} relative to {ref}")
+    ax.set_ylabel("\u2212log$_{10}$ (adjusted p)")
+    ax.set_title(f"Differential morphology: {group} vs {ref}")
+    lim = max(1.05, float(sub["effect"].abs().max()) * 1.08)
+    ax.set_xlim(-lim, lim)
+    ymax = float(sub["nlog10fdr"].max())
+    ax.set_ylim(-0.3, ymax * 1.06)
+    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3,
+              handletextpad=0.2, columnspacing=1.2)
 
-    # ---- decluttered labelling: stack top hits per side with leader lines ----
-    ymax = sub["nlog10fdr"].max()
-    ax.set_xlim(-1.35, 1.35)
-    ax.set_ylim(-0.5, ymax * 1.18)
-    sig_df = sub.loc[sig].dropna(subset=["effect"]).drop_duplicates("feature")
+    # ---- labels outside the axes, one column per side, with leader lines ----
+    sig_df = sub.loc[sig].drop_duplicates("feature")
     sig_df = sig_df.reindex(sig_df["effect"].abs().sort_values(ascending=False).index)
-    for side, x_anchor, ha in [(1, 1.30, "right"), (-1, -1.30, "left")]:
-        side_hits = sig_df[np.sign(sig_df["effect"]) == side].head(max(1, top_n_labels // 2))
-        n = len(side_hits)
-        for k, (_, r) in enumerate(side_hits.iterrows()):
-            y_lab = ymax * (1.08 - 0.11 * k)
-            ax.annotate(_short(r["feature"], 30),
-                        xy=(r["effect"], r["nlog10fdr"]),
-                        xytext=(x_anchor, y_lab), ha=ha, va="center", fontsize=5.5,
-                        color="#444444",
-                        arrowprops=dict(arrowstyle="-", lw=0.4, color="#bbbbbb",
-                                        shrinkA=0, shrinkB=2))
-    ax.legend(fontsize=7, frameon=False, loc="lower center")
-    fig.tight_layout()
+    k_side = max(1, top_n_labels // 2)
+    for side, x_txt, ha, col in [(1, 1.04, "left", UP), (-1, -0.17, "right", DOWN)]:
+        hits = sig_df[np.sign(sig_df["effect"]) == side].head(k_side)
+        hits = hits.sort_values("nlog10fdr", ascending=False)
+        for k, (_, r) in enumerate(hits.iterrows()):
+            y_txt = 0.97 - k * (0.80 / max(k_side - 1, 1))
+            ax.annotate(pretty_name(r["feature"], 48), xy=(r["effect"], r["nlog10fdr"]),
+                        xycoords="data", xytext=(x_txt, y_txt), textcoords="axes fraction",
+                        ha=ha, va="center", fontsize=9.5, color="#222222",
+                        arrowprops=dict(arrowstyle="-", lw=0.6, color=col, alpha=0.55,
+                                        shrinkA=1, shrinkB=2),
+                        annotation_clip=False)
+    ax.yaxis.set_label_coords(-0.10, 0.5)
     paths = _save(fig, outdir, name or f"volcano_{_safe(group)}")
     plt.close(fig)
     return paths
