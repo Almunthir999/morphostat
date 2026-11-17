@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+validation_results/
+morphostat_results/
+*.egg-info/
+.pytest_cache/

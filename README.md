@@ -30,13 +30,24 @@ endpoint.
 
 ## Install
 
+Requires Python 3.9 or later and git. The commands are the same on Linux, macOS
+and Windows (use `python3` instead of `python` if `python --version` reports
+Python 2 or is not found).
+
 ```bash
-git clone https://github.com/Almunthir334/morphostat.git
-cd MorphoStat
-pip install -e .
+git clone https://github.com/Almunthir999/morphostat.git
+cd morphostat
+python -m venv .venv
+# activate the environment:
+#   Linux / macOS:              source .venv/bin/activate
+#   Windows (Command Prompt):   .venv\Scripts\activate.bat
+#   Windows (PowerShell):       .venv\Scripts\Activate.ps1
+python -m pip install -e .
+morphostat --help
 ```
 
-Dependencies: numpy, pandas, scipy, scikit-learn, statsmodels, matplotlib, seaborn.
+Dependencies (installed automatically): numpy, pandas, scipy, scikit-learn,
+statsmodels, matplotlib, seaborn.
 
 ## One-click usage
 
@@ -49,6 +60,11 @@ morphostat run \
     --source     cellprofiler \
     --outdir     results
 ```
+
+On Windows Command Prompt replace each trailing `\` with `^`; in PowerShell use a
+backtick (`` ` ``); or type the whole command on one line. `results/` is created
+inside the folder from which you run the command (use an absolute path to write
+elsewhere).
 
 Outputs land in `results/`:
 
@@ -81,6 +97,9 @@ res = run_pipeline("csv_folder", "results",
 
 MorphoStat is schema-tolerant. It auto-detects numeric morphology features and
 drops obvious non-features (pixel coordinates, object/image indices, identifiers).
+Numeric metadata columns (e.g. concentration, dose, time point) cannot be told apart
+from measurements automatically: list them with `--meta-cols` so they are not
+analysed as features.
 
 - **`--source cellprofiler`** — per-object or per-well CellProfiler exports
   (`*_AreaShape_*`, `*_Intensity_*`, `*_Texture_*`, …).
@@ -117,8 +136,8 @@ Hedges' *g* (parametric) or Cliff's δ (non-parametric). An omnibus one-way
 **ANOVA** or **Kruskal–Wallis** (with η² / ε²) is run across all groups.
 All p-values are corrected with **Benjamini–Hochberg FDR**.
 
-**Figures.** Violin+box+strip panels, PCA of the full signature with 95%
-confidence ellipses, a clustered feature-correlation heatmap, and an
+**Figures.** Violin+box+strip panels, PCA of the full signature with 2-SD
+ellipses, a clustered feature-correlation heatmap, and an
 effect-size-vs-FDR volcano. Text is preserved as editable text in the SVG
 (`svg.fonttype='none'`) so figures open fully editable in Illustrator/Inkscape.
 
@@ -146,21 +165,47 @@ PCA of the full feature set separated each mechanism class from the tight DMSO
 control cluster, and the correlation heatmap recovered coherent Actin-, Tubulin-
 , and shape-feature blocks.
 
-Reproduce the demo dataset:
+### Reproduce the validation (one command)
+
+`run_validation.py` regenerates every number, table and figure reported in the
+Bio-protocol article. It downloads the BBBC021 per-well profiles from the Broad
+Institute `cytominergallery` repository (needs git and internet), builds one CSV
+per plate with `prepare_bbbc021.py`, and runs the two analyses:
+
+```bash
+python run_validation.py              # writes ./validation_results/
+```
+
+| Output | Article item |
+|---|---|
+| `two_group/figures/violin_panel.*` | Figure 1 |
+| `two_group/figures/volcano_Actin_disruptors.*` | Figure 2 |
+| `multi_group/figures/pca.*` | Figure 3 |
+| `multi_group/figures/shape_correlation_spearman.*` | Figure 4 |
+| `two_group/tables/pairwise_vs_control.csv` | Table 3, File S2 |
+| `multi_group/tables/omnibus_across_groups.csv` | File S3 |
+| `*/REPORT.md`, `*/run_manifest.json` | File S1 |
+| `direction_check.txt` | raw-data direction check |
+| `environment.txt` | software versions used |
+
+Expected summary: two-group 345 wells x 459 features, 379 significant (FDR < 0.05,
+Mann-Whitney U for all features); multi-group 450 wells, 458 of 459 significant
+(Kruskal-Wallis); treated median cell area lower than DMSO on 9/9 plates.
+Runtime is under one minute on a laptop.
+
+Without git, download
+https://github.com/cytomining/cytominergallery/archive/refs/heads/master.zip,
+unzip it and run `python run_validation.py --extdata cytominergallery-master/inst/extdata`.
+
+To prepare the BBBC021 input manually and run the command-line interface instead:
 
 ```bash
 git clone --depth 1 https://github.com/cytomining/cytominergallery.git
-python examples/prepare_bbbc021.py cytominergallery/inst/extdata demo_input
+python prepare_bbbc021.py cytominergallery/inst/extdata demo_input
 morphostat run --input demo_input --group-col moa --control DMSO \
-               --batch-col Plate --source cellprofiler --outdir results
+               --batch-col Plate --source cellprofiler \
+               --meta-cols Well compound concentration --outdir results
 ```
-
-Two worked result sets ship with this repository:
-
-- `results_cytoskeleton/` — focused DMSO vs the four cytoskeleton-relevant
-  mechanism classes (the cleanest figures for a figure panel).
-- `results_full_screen/` — the complete 13-mechanism screen (632 wells,
-  473 features, 4,619 significant feature×group hits) demonstrating scalability.
 
 ## Tests
 
@@ -197,6 +242,15 @@ BBBC021 analysis above. The synthetic fixtures are never presented as results.
   Lusca: FIJI (ImageJ) based tool for automated morphological analysis. *Sci Rep* 14.
 - Ljosa V, Sokolnicki KL, Carpenter AE. (2012/2013). Annotated high-throughput
   microscopy image sets for validation / BBBC021. *Nat Methods* / *J Biomol Screen*.
+
+## Support and maintenance
+
+MorphoStat is actively maintained by the authors. Please report bugs, ask
+questions, or request features through
+[GitHub Issues](https://github.com/Almunthir999/morphostat/issues). Each release is
+archived on Zenodo; the version used in the Bio-protocol article is v0.1.1.
+The repository moved here from github.com/Almunthir334/morphostat; release v0.1.0
+remains archived at https://doi.org/10.5281/zenodo.20354069.
 
 ## License
 

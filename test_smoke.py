@@ -293,3 +293,16 @@ def test_run_pipeline_end_to_end(toy_csv_folder, tmp_path):
     assert manifest["control"] == "ctrl"
     assert manifest["n_significant_pairwise"] >= 1   # engineered area/solidity shifts
     assert isinstance(summary, dict)
+
+
+def test_fiji_results_non_features_excluded(tmp_path):
+    """Fiji 'Analyze Particles' tables: row numbers and coordinates are not features."""
+    import pandas as pd
+    from morphostat import io as mio
+    df = pd.DataFrame({" ": [1, 2], "Area": [120.5, 130.5], "X": [10.2, 40.2], "Y": [30.4, 60.4],
+                       "XM": [10.1, 40.1], "YM": [30.3, 60.3], "BX": [5, 35], "BY": [25, 55],
+                       "Perim.": [45.1, 47.1], "Circ.": [0.74, 0.71], "Slice": [1, 1],
+                       "AR": [1.3, 1.2], "Round": [0.77, 0.81], "Solidity": [0.91, 0.93],
+                       "treatment": ["DMSO", "DMSO"]})
+    feats = mio.detect_feature_columns(df, meta_cols=["treatment"])
+    assert feats == ["Area", "Perim.", "Circ.", "AR", "Round", "Solidity"]

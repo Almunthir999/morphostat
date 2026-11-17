@@ -26,9 +26,12 @@ import pandas as pd
 # (object/image indices, pixel coordinates, identifiers, batch keys).
 # ---------------------------------------------------------------------------
 _NON_FEATURE_PATTERNS = [
-    r"center_?x", r"center_?y", r"location_center", r"_x$", r"_y$",
+    r"center_?x", r"center_?y", r"location_center", r"_location_", r"_x$", r"_y$",
     r"object_?number", r"image_?number", r"^objectnumber$", r"^imagenumber$",
     r"parent", r"children", r"^id$", r"^index$", r"unnamed",
+    # Fiji/ImageJ Results tables: blank-named row-number column, centroid / centre-of-
+    # mass / bounding-box / Feret start coordinates, and stack position.
+    r"^\s*$", r"^(x|y|xm|ym|bx|by|fx|fy|feretx|ferety|slice|ch|frame)$",
 ]
 _NON_FEATURE_RE = re.compile("|".join(_NON_FEATURE_PATTERNS), re.IGNORECASE)
 
