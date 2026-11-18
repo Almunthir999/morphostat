@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.4 (2026-11)
+Print-ready figures; statistical results unchanged.
+- Figures are sized so that text is at least ~7 pt when placed at journal page width;
+  medium-weight Inter font (falls back to Arial / DejaVu Sans), bold titles, thicker lines.
+- Violin panels: extra headroom so the adjusted p-value never overlaps the data.
+- Volcano plot: clearer gap between the left labels and the y-axis title.
+
 ## v0.1.3 (2026-11)
 Figure readability release; statistical results are identical to v0.1.1/v0.1.2.
 - Readable feature names in all figures (e.g. `Cells_AreaShape_FormFactor` ->

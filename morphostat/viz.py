@@ -32,12 +32,17 @@ def set_style():
         "svg.fonttype": "none",          # keep text editable in vector output
         "pdf.fonttype": 42,              # TrueType, editable in PDF
         "font.family": "sans-serif",
-        "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica"],
-        "font.size": 10, "axes.titlesize": 12, "axes.titleweight": "bold",
-        "axes.labelsize": 11, "xtick.labelsize": 9.5, "ytick.labelsize": 9.5,
-        "legend.fontsize": 9.5, "legend.title_fontsize": 10,
+        # Inter Medium where available (slightly heavier, very legible), else Arial / DejaVu
+        "font.sans-serif": ["Inter", "Arial", "Liberation Sans", "DejaVu Sans"],
+        "font.weight": 500, "axes.labelweight": 500,
+        "font.size": 11, "axes.titlesize": 13, "axes.titleweight": "bold",
+        "axes.labelsize": 12, "xtick.labelsize": 10.5, "ytick.labelsize": 10.5,
+        "legend.fontsize": 10.5, "legend.title_fontsize": 11,
         "axes.spines.top": False, "axes.spines.right": False,
-        "axes.linewidth": 0.9,
+        "axes.linewidth": 1.2, "xtick.major.width": 1.1, "ytick.major.width": 1.1,
+        "xtick.major.size": 4, "ytick.major.size": 4,
+        "text.color": "#111111", "axes.labelcolor": "#111111",
+        "xtick.color": "#111111", "ytick.color": "#111111",
         "figure.dpi": 150, "savefig.dpi": 300, "savefig.bbox": "tight",
     })
 
@@ -116,7 +121,7 @@ def violin_panel(
         if control in order:
             order = [control] + [g for g in order if g != control]
     pal = _palette(order, control)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(3.3 * ncols, 3.1 * nrows), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.75 * ncols, 2.65 * nrows), squeeze=False)
     for i, feat in enumerate(features):
         ax = axes[i // ncols][i % ncols]
         sns.violinplot(data=df, x=group_col, y=feat, order=order, hue=group_col,
@@ -127,12 +132,12 @@ def violin_panel(
                     showcaps=True, boxprops={"facecolor": "white", "zorder": 3},
                     whiskerprops={"linewidth": 0.9}, fliersize=0, linewidth=0.9, ax=ax)
         sns.stripplot(data=df, x=group_col, y=feat, order=order, color="black",
-                      size=1.8, alpha=0.35, jitter=0.18, ax=ax)
-        ax.set_title(pretty_name(feat, 34), fontsize=10.5, fontweight="bold")
+                      size=2.0, alpha=0.4, jitter=0.18, ax=ax)
+        ax.set_title(pretty_name(feat, 30), fontsize=11.5, fontweight="bold")
         ax.set_xlabel("")
-        ax.set_ylabel(ylabel if i % ncols == 0 else "", fontsize=9.5)
+        ax.set_ylabel(ylabel if i % ncols == 0 else "", fontsize=10.5)
         rot = 0 if len(order) <= 2 else 30
-        ax.tick_params(axis="x", rotation=rot, labelsize=9)
+        ax.tick_params(axis="x", rotation=rot, labelsize=10)
         if rot:
             for lbl in ax.get_xticklabels():
                 lbl.set_ha("right")
@@ -140,12 +145,14 @@ def violin_panel(
             row = stats[(stats["feature"] == feat) & (stats["group"] == order[1])]
             if len(row) and pd.notna(row["fdr_bh"].iloc[0]):
                 q = float(row["fdr_bh"].iloc[0])
-                ax.text(0.98, 0.97, "adj. p = " + _fmt_p(q), transform=ax.transAxes,
-                        ha="right", va="top", fontsize=8.5, color="#333333")
+                y0, y1 = ax.get_ylim()
+                ax.set_ylim(y0, y1 + 0.20 * (y1 - y0))      # headroom for the p-value
+                ax.text(0.98, 0.98, "adj. p = " + _fmt_p(q), transform=ax.transAxes,
+                        ha="right", va="top", fontsize=10, color="#111111")
     for j in range(n, nrows * ncols):
         axes[j // ncols][j % ncols].axis("off")
     if title:
-        fig.suptitle(title, y=1.01, fontsize=12.5, fontweight="bold")
+        fig.suptitle(title, y=1.01, fontsize=13.5, fontweight="bold")
     fig.tight_layout()
     paths = _save(fig, outdir, name)
     plt.close(fig)
@@ -249,11 +256,11 @@ def correlation_heatmap(
                 linewidths=0.4 if small else 0, linecolor="white",
                 cbar_kws={"shrink": 0.7, "label": f"{method.capitalize()} correlation"},
                 xticklabels=True, yticklabels=True, ax=ax)
-    ax.tick_params(labelsize=9.5 if small else 6.5, length=2)
+    ax.tick_params(labelsize=11 if small else 7.5, length=2)
     plt.setp(ax.get_xticklabels(), rotation=90)
     cbar = ax.collections[0].colorbar
-    cbar.ax.tick_params(labelsize=9)
-    cbar.set_label(f"{method.capitalize()} correlation", fontsize=10.5)
+    cbar.ax.tick_params(labelsize=10.5)
+    cbar.set_label(f"{method.capitalize()} correlation", fontsize=12)
     ax.set_title(title or f"Feature correlation structure ({method.capitalize()})", pad=10)
     fig.tight_layout()
     paths = _save(fig, outdir, name)
@@ -275,8 +282,8 @@ def effect_volcano(
     sub = sub.dropna(subset=["effect", "fdr_bh"])
     sub["nlog10fdr"] = -np.log10(sub["fdr_bh"].clip(lower=1e-300))
     UP, DOWN, NS = "#C8394B", "#3C64C0", "#C9CBD3"
-    fig = plt.figure(figsize=(9.8, 5.4))
-    ax = fig.add_axes([0.32, 0.17, 0.36, 0.72])
+    fig = plt.figure(figsize=(9.4, 5.6))
+    ax = fig.add_axes([0.335, 0.17, 0.33, 0.72])
     sig = sub["fdr_bh"] < alpha
     up = sig & (sub["effect"] > 0); dn = sig & (sub["effect"] < 0)
     ax.scatter(sub.loc[~sig, "effect"], sub.loc[~sig, "nlog10fdr"], s=26, color=NS,
@@ -304,18 +311,20 @@ def effect_volcano(
     sig_df = sub.loc[sig].drop_duplicates("feature")
     sig_df = sig_df.reindex(sig_df["effect"].abs().sort_values(ascending=False).index)
     k_side = max(1, top_n_labels // 2)
-    for side, x_txt, ha, col in [(1, 1.04, "left", UP), (-1, -0.17, "right", DOWN)]:
+    for side, x_txt, ha, col in [(1, 1.04, "left", UP), (-1, -0.20, "right", DOWN)]:
         hits = sig_df[np.sign(sig_df["effect"]) == side].head(k_side)
         hits = hits.sort_values("nlog10fdr", ascending=False)
         for k, (_, r) in enumerate(hits.iterrows()):
             y_txt = 0.97 - k * (0.80 / max(k_side - 1, 1))
             ax.annotate(pretty_name(r["feature"], 48), xy=(r["effect"], r["nlog10fdr"]),
                         xycoords="data", xytext=(x_txt, y_txt), textcoords="axes fraction",
-                        ha=ha, va="center", fontsize=9.5, color="#222222",
-                        arrowprops=dict(arrowstyle="-", lw=0.6, color=col, alpha=0.55,
+                        ha=ha, va="center", fontsize=10.5, color="#111111",
+                        arrowprops=dict(arrowstyle="-", lw=0.8, color=col, alpha=0.6,
                                         shrinkA=1, shrinkB=2),
                         annotation_clip=False)
-    ax.yaxis.set_label_coords(-0.10, 0.5)
+    ax.yaxis.set_label_coords(-0.11, 0.5)
+    ax.yaxis.label.set_bbox(dict(facecolor="white", edgecolor="none", pad=1.5))
+    ax.yaxis.label.set_zorder(5)
     paths = _save(fig, outdir, name or f"volcano_{_safe(group)}")
     plt.close(fig)
     return paths

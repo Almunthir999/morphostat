@@ -1,7 +1,7 @@
 {
   "title": "MorphoStat: an automated pipeline for normalisation, assumption-aware statistics, and publication-ready visualisation of cell morphology profiles",
   "upload_type": "software",
-  "description": "MorphoStat is a Python package and command-line tool that turns morphology tables exported by CellProfiler, Fiji/ImageJ or FilamentSensor into cleaned, plate-normalised data, assumption-aware statistics with Benjamini–Hochberg FDR control, publication-ready figures, and an auditable run report. Version 0.1.3 is the version described in the accompanying Bio-protocol article; run_validation.py reproduces the BBBC021 validation reported there.",
+  "description": "MorphoStat is a Python package and command-line tool that turns morphology tables exported by CellProfiler, Fiji/ImageJ or FilamentSensor into cleaned, plate-normalised data, assumption-aware statistics with Benjamini–Hochberg FDR control, publication-ready figures, and an auditable run report. Version 0.1.4 is the version described in the accompanying Bio-protocol article; run_validation.py reproduces the BBBC021 validation reported there.",
   "creators": [
     {"name": "Altobi, Almunthir", "affiliation": "College of Medicine and Health Sciences, National University of Science and Technology (NUST), Sohar, Oman"},
     {"name": "Heo, Danhui", "affiliation": "Albert Szent-Györgyi Medical School, University of Szeged, Szeged, Hungary"}
